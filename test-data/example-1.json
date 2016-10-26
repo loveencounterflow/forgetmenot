@@ -1,0 +1,35 @@
+{
+ "~isa": "FORGETMENOT/cache",
+ "foo": "bar",
+ "globs": [
+  "src/*"
+ ],
+ "path": "test-data/example-1.json",
+ "files": {
+  "69638621": {
+   "path": "src/date.coffee",
+   "checksum": 2904673215,
+   "timestamp": "20161026-193210.210",
+   "status": "same",
+   "previous-checksum": 2904673215,
+   "previous-timestamp": "20161026-193210.210"
+  },
+  "1101004112": {
+   "path": "src/main.coffee",
+   "checksum": 754601873,
+   "timestamp": "20161026-195013.360",
+   "status": "changed",
+   "previous-checksum": 2485674670,
+   "previous-timestamp": "20161026-194840.813"
+  },
+  "1467211317": {
+   "path": "src/tests.coffee",
+   "checksum": 1604951025,
+   "timestamp": "20161026-194906.138",
+   "status": "same",
+   "previous-checksum": 200664108,
+   "previous-timestamp": "20161026-194556.333"
+  }
+ },
+ "autosave": true
+}
