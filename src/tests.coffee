@@ -56,6 +56,9 @@ FMN                       = require '..'
   return source.length
 
 #-----------------------------------------------------------------------------------------------------------
+@_looks_like_digest = ( x ) -> ( CND.isa_text x ) and ( /^[0-9a-f]{12}$/ ).test x
+
+#-----------------------------------------------------------------------------------------------------------
 @_require_file = ( path ) ->
   ### Inhibit caching: ###
   delete require[ 'cache' ][ path ]
@@ -77,10 +80,10 @@ FMN                       = require '..'
 #-----------------------------------------------------------------------------------------------------------
 @[ "create cache object (1)" ] = ( T, done ) ->
   probes_and_matchers = [
-    [{"update":false},{"~isa":"FORGETMENOT/cache","globs":[],"path":null,"files":{},"autosave":false}]
-    [{"update":true},{"~isa":"FORGETMENOT/cache","globs":[],"path":null,"files":{},"autosave":false}]
-    [{"autosave":true,"cache":"test-data/cache-1.json"},{"~isa":"FORGETMENOT/cache","globs":[],"path":"test-data/cache-1.json","files":{},"autosave":true}]
-    [{"globs":"src/*"},{"~isa":"FORGETMENOT/cache","globs":["src/*"],"path":null,"files":{},"autosave":false}]
+    [{"update":false},{"~isa":"FORGETMENOT/cache","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
+    [{"update":true},{"~isa":"FORGETMENOT/cache","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
+    [{"autosave":true,"cache":"test-data/cache-1.json"},{"~isa":"FORGETMENOT/cache","globs":[],"path":"test-data/cache-1.json","files":{},"autosave":true,"cache":{}}]
+    [{"globs":"src/*"},{"~isa":"FORGETMENOT/cache","globs":["src/*"],"path":null,"files":{},"autosave":false,"cache":{}}]
     ]
   for [ probe, matcher, ] in probes_and_matchers
     result = FMN.new_cache probe
@@ -94,12 +97,12 @@ FMN                       = require '..'
     settings    = { globs: 'src/*', }
     result      = yield FMN.new_cache settings, resume
     { files, }  = result
-    T.eq files[ 1101004112 ][ 'path' ], 'src/main.coffee'
-    T.eq files[ 1467211317 ][ 'path' ], 'src/tests.coffee'
-    T.ok CND.isa_number files[ 1101004112 ][ 'checksum' ]
-    T.ok CND.isa_number files[ 1467211317 ][ 'checksum' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ 1101004112 ][ 'timestamp' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ 1467211317 ][ 'timestamp' ]
+    T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
+    T.eq files[ '0e4cf94eac84' ][ 'path' ], 'src/tests.coffee'
+    T.ok @_looks_like_digest files[ 'c19a9d5b001f' ][ 'checksum' ]
+    T.ok @_looks_like_digest files[ '0e4cf94eac84' ][ 'checksum' ]
+    T.ok FMN.DATE._looks_like_timestamp files[ 'c19a9d5b001f' ][ 'timestamp' ]
+    T.ok FMN.DATE._looks_like_timestamp files[ '0e4cf94eac84' ][ 'timestamp' ]
     done()
   return null
 
@@ -110,12 +113,23 @@ FMN                       = require '..'
     result      = yield FMN.new_cache settings, resume
     debug '90988', result
     { files, }  = result
-    T.eq files[ 1101004112 ][ 'path' ], 'src/main.coffee'
-    T.eq files[ 1467211317 ][ 'path' ], 'src/tests.coffee'
-    T.ok CND.isa_number files[ 1101004112 ][ 'checksum' ]
-    T.ok CND.isa_number files[ 1467211317 ][ 'checksum' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ 1101004112 ][ 'timestamp' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ 1467211317 ][ 'timestamp' ]
+    T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
+    T.eq files[ '0e4cf94eac84' ][ 'path' ], 'src/tests.coffee'
+    T.ok @_looks_like_digest files[ 'c19a9d5b001f' ][ 'checksum' ]
+    T.ok @_looks_like_digest files[ '0e4cf94eac84' ][ 'checksum' ]
+    T.ok FMN.DATE._looks_like_timestamp files[ 'c19a9d5b001f' ][ 'timestamp' ]
+    T.ok FMN.DATE._looks_like_timestamp files[ '0e4cf94eac84' ][ 'timestamp' ]
+    done()
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@[ "set and get to and from cache" ] = ( T, done ) ->
+  step ( resume ) =>
+    settings    = { globs: 'src/*', cache: 'test-data/example-1.json' }
+    fmn         = yield FMN.new_cache settings, resume
+    FMN.set fmn, 'bar', 42
+    debug '90988', fmn
+    debug '22230', FMN.get fmn, 'bar'
     done()
   return null
 
@@ -127,6 +141,7 @@ unless module.parent?
     "create cache object (1)"
     "create cache object (2)"
     "create cache object with path"
+    "set and get to and from cache"
     ]
   @_prune()
   @_main()

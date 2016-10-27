@@ -6,30 +6,25 @@
  ],
  "path": "test-data/example-1.json",
  "files": {
-  "69638621": {
+  "e8338b6a05f6": {
    "path": "src/date.coffee",
-   "checksum": 2904673215,
-   "timestamp": "20161026-193210.210",
-   "status": "same",
-   "previous-checksum": 2904673215,
-   "previous-timestamp": "20161026-193210.210"
+   "checksum": "0eb5c69f2090",
+   "timestamp": "20161027-114637.906",
+   "status": "same"
   },
-  "1101004112": {
+  "c19a9d5b001f": {
    "path": "src/main.coffee",
-   "checksum": 754601873,
-   "timestamp": "20161026-195013.360",
-   "status": "changed",
-   "previous-checksum": 2485674670,
-   "previous-timestamp": "20161026-194840.813"
+   "checksum": "9c3514e57c53",
+   "timestamp": "20161027-114637.915",
+   "status": "same"
   },
-  "1467211317": {
+  "0e4cf94eac84": {
    "path": "src/tests.coffee",
-   "checksum": 1604951025,
-   "timestamp": "20161026-194906.138",
-   "status": "same",
-   "previous-checksum": 200664108,
-   "previous-timestamp": "20161026-194556.333"
+   "checksum": "f5f171b95773",
+   "timestamp": "20161027-114810.040",
+   "status": "same"
   }
  },
+ "cache": {},
  "autosave": true
 }

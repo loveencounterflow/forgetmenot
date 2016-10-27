@@ -19,10 +19,10 @@ test                      = require 'guy-test'
 # LTSORT                    = require 'ltsort'
 PATH                      = require 'path'
 FS                        = require 'fs'
+CRYPTO                    = require 'crypto'
 D                         = require 'pipedreams'
 { $, $async, }            = D
 { step, }                 = require 'coffeenode-suspend'
-Crc32                     = require 'sse4_crc32'
 do_glob                   = require 'glob'
 @DATE                     = require './date'
 
@@ -71,11 +71,11 @@ do_glob                   = require 'glob'
     path:           path
     files:          {}
     autosave:       no
+    cache:          {}
   #.........................................................................................................
   for glob in globs
     continue if glob in R[ 'globs' ]
     R[ 'globs' ].push glob
-  debug '44000', path
   R[ 'autosave' ] = if autosave? then autosave else path?
   #.........................................................................................................
   return @update R, handler if handler?
@@ -109,9 +109,6 @@ do_glob                   = require 'glob'
         new_timestamp           = yield @timestamp_from_path  me, path, resume
         old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
         old_timestamp           = files[ path_checksum ]?[ 'timestamp'  ] ? null
-        # debug '33322', 'path', path
-        # debug '33322', 'old_timestamp', old_timestamp
-        # debug '33322', 'new_timestamp', new_timestamp
         #...................................................................................................
         if old_checksum is new_checksum
           status    = 'same'
@@ -145,8 +142,28 @@ do_glob                   = require 'glob'
 
 
 #===========================================================================================================
-# SET AND GET, PLAIN AND CACHE
+# SET AND GET OF CACHE ENTRIES
 #-----------------------------------------------------------------------------------------------------------
+@set = ( me, key, value ) ->
+  ### serialize, checksum, equality ###
+  timestamp = @DATE.as_timestamp()
+  target    = me[ 'cache' ][ 'key' ] ?= {}
+  Object.assign target, { value, timestamp, }
+  return me
+
+#-----------------------------------------------------------------------------------------------------------
+@get_entry = ( me, key, fallback ) ->
+  unless ( R = me[ 'cache' ][ 'key' ] )?
+    return fallback unless fallback is undefined
+    throw new Error "no such key: #{rpr key}"
+  return R
+
+#-----------------------------------------------------------------------------------------------------------
+@get = ( me, key, fallback ) ->
+  if ( R = @get_entry me, key, null ) is null
+    return fallback unless fallback is undefined
+    throw new Error "no such key: #{rpr key}"
+  return R[ 'value' ]
 
 
 #===========================================================================================================
@@ -160,10 +177,11 @@ do_glob                   = require 'glob'
     when 4
       null
     else throw new Error "expect 3 or 4 arguments, got #{arity}"
-  crc32     = new Crc32.CRC32()
+  #.........................................................................................................
+  hash      = CRYPTO.createHash 'sha1'
+  Z         = null
   finished  = no
-  # input     = ( require 'fs' ).createReadStream path
-  input = D.new_stream { path, }
+  input     = D.new_stream { path, }
   #.........................................................................................................
   input.on 'error', ( error ) ->
     throw error if finished
@@ -172,16 +190,14 @@ do_glob                   = require 'glob'
     handler error
   #.........................................................................................................
   input
-    .pipe $ ( data, send ) -> crc32.update data
-    .pipe $ 'finish', =>
-      return if finished
-      finished = yes
-      handler null, crc32.crc()
+    .pipe hash
+    .pipe $ ( buffer ) => Z = ( buffer.toString 'hex' )[ ... 12 ]
+    .pipe $ 'finish', => handler null, Z
   return null
 
 #-----------------------------------------------------------------------------------------------------------
 @checksum_from_text = ( me, text, handler = null ) ->
-  R = Crc32.calculate text
+  R = ( ( ( CRYPTO.createHash 'sha1' ).update text, 'utf8' ).digest 'hex' )[ ... 12 ]
   handler null, R if handler?
   return R
 
