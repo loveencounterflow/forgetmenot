@@ -110,6 +110,8 @@ do_glob                   = require 'glob'
         old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
         old_timestamp           = files[ path_checksum ]?[ 'timestamp'  ] ? null
         #...................................................................................................
+        help '33209', old_checksum, new_checksum
+        help '33209', old_timestamp, new_timestamp
         if old_checksum is new_checksum
           status    = 'same'
           checksum  = old_checksum
@@ -133,12 +135,19 @@ do_glob                   = require 'glob'
   return null
 
 #-----------------------------------------------------------------------------------------------------------
-@save = ( me, handler ) ->
-  step ( resume ) =>
-    return handler new Error "unable to save without path given" unless ( path = me[ 'path' ] )?
-    yield FS.writeFile path, ( JSON.stringify me, null, ' ' ), resume
-    handler null, me
-  return null
+@save = ( me, handler = null ) ->
+  json = JSON.stringify me, null, ' '
+  #.........................................................................................................
+  if handler?
+    step ( resume ) =>
+      return handler new Error "unable to save without path given" unless ( path = me[ 'path' ] )?
+      yield FS.writeFile path, json, resume
+      handler null, me
+  #.........................................................................................................
+  else
+    FS.writeFileSync path, json
+  #.........................................................................................................
+  return me
 
 
 #===========================================================================================================
@@ -209,7 +218,7 @@ do_glob                   = require 'glob'
     catch error
       throw error unless error[ 'code' ] is 'ENOENT'
       return handler null, null
-    handler null, @DATE.as_timestamp stat[ 'timestamp' ]
+    handler null, @DATE.as_timestamp stat[ 'mtime' ]
   return null
 
 

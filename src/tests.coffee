@@ -133,6 +133,10 @@ FMN                       = require '..'
     done()
   return null
 
+#-----------------------------------------------------------------------------------------------------------
+@[ "warn about missing features" ] = ( T, done ) ->
+  warn "implement symbolic reference point for path resolution: CWD or *.json location"
+  done()
 
 
 ############################################################################################################
@@ -142,6 +146,7 @@ unless module.parent?
     "create cache object (2)"
     "create cache object with path"
     "set and get to and from cache"
+    "warn about missing features"
     ]
   @_prune()
   @_main()
