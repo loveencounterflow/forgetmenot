@@ -78,24 +78,24 @@ FMN                       = require '..'
 #===========================================================================================================
 # TESTS
 #-----------------------------------------------------------------------------------------------------------
-@[ "create cache object (1)" ] = ( T, done ) ->
+@[ "create memo object (1)" ] = ( T, done ) ->
   probes_and_matchers = [
-    [{"update":false},{"~isa":"FORGETMENOT/cache","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
-    [{"update":true},{"~isa":"FORGETMENOT/cache","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
-    [{"autosave":true,"cache":"test-data/cache-1.json"},{"~isa":"FORGETMENOT/cache","globs":[],"path":"test-data/cache-1.json","files":{},"autosave":true,"cache":{}}]
-    [{"globs":"src/*"},{"~isa":"FORGETMENOT/cache","globs":["src/*"],"path":null,"files":{},"autosave":false,"cache":{}}]
+    [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
+    [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
+    [{"autosave":true,"path":"test-data/memo-1.json"},{"~isa":"FORGETMENOT/memo","globs":[],"path":"test-data/memo-1.json","files":{},"autosave":true,"cache":{}}]
+    [{"globs":"src/*"},{"~isa":"FORGETMENOT/memo","globs":["src/*"],"path":null,"files":{},"autosave":false,"cache":{}}]
     ]
   for [ probe, matcher, ] in probes_and_matchers
-    result = FMN.new_cache probe
+    result = FMN.new_memo probe
     # debug '22022', JSON.stringify [ probe, result, ]
     T.eq result, matcher
   done()
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "create cache object (2)" ] = ( T, done ) ->
+@[ "create memo object (2)" ] = ( T, done ) ->
   step ( resume ) =>
     settings    = { globs: 'src/*', }
-    result      = yield FMN.new_cache settings, resume
+    result      = yield FMN.new_memo settings, resume
     { files, }  = result
     T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
     T.eq files[ '0e4cf94eac84' ][ 'path' ], 'src/tests.coffee'
@@ -107,10 +107,10 @@ FMN                       = require '..'
   return null
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "create cache object with path" ] = ( T, done ) ->
+@[ "create memo object with path" ] = ( T, done ) ->
   step ( resume ) =>
-    settings    = { globs: 'src/*', cache: 'test-data/example-1.json' }
-    result      = yield FMN.new_cache settings, resume
+    settings    = { globs: 'src/*', path: 'test-data/example-1.json' }
+    result      = yield FMN.new_memo settings, resume
     debug '90988', result
     { files, }  = result
     T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
@@ -125,8 +125,8 @@ FMN                       = require '..'
 #-----------------------------------------------------------------------------------------------------------
 @[ "set and get to and from cache" ] = ( T, done ) ->
   step ( resume ) =>
-    settings    = { globs: 'src/*', cache: 'test-data/example-1.json' }
-    fmn         = yield FMN.new_cache settings, resume
+    settings    = { globs: 'src/*', path: 'test-data/example-1.json' }
+    fmn         = yield FMN.new_memo settings, resume
     FMN.set fmn, 'bar', 42
     debug '90988', fmn
     debug '22230', FMN.get fmn, 'bar'
@@ -142,9 +142,9 @@ FMN                       = require '..'
 ############################################################################################################
 unless module.parent?
   include = [
-    "create cache object (1)"
-    "create cache object (2)"
-    "create cache object with path"
+    "create memo object (1)"
+    "create memo object (2)"
+    "create memo object with path"
     "set and get to and from cache"
     "warn about missing features"
     ]

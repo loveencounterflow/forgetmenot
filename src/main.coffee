@@ -30,7 +30,7 @@ do_glob                   = require 'glob'
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@new_cache = ( settings, handler ) ->
+@new_memo = ( settings, handler ) ->
   switch arity = arguments.length
     when 1
       if CND.isa_function settings
@@ -42,14 +42,23 @@ do_glob                   = require 'glob'
     else throw new Error "expected 1 or 2 arguments, got #{arity}"
   #.........................................................................................................
   if settings?
-    throw new Error "expected a POD, got a #{CND.type_of settings}" unless CND.isa_pod settings
+    if CND.isa settings, 'FORGETMENOT/memo'
+      R = CND.deep_copy settings
+      return @update R, handler if handler?
+      return R
+    unless CND.isa_pod settings
+      throw new Error "expected a POD or a FORGETMENOT/memo object, got a #{CND.type_of settings}"
+  #.........................................................................................................
+  unless CND.is_subset ( keys = Object.keys settings ), @new_memo._keys
+    expected  = ( rpr key for key in @new_memo._keys                                  ).join ', '
+    got       = ( rpr key for key in keys             when key not in @new_memo._keys ).join ', '
+    throw new Error "expected #{expected} as keys of settings, got #{got}"
   #.........................................................................................................
   globs     = settings?[ 'globs'    ] ? []
-  cache     = settings?[ 'cache'    ] ? null
+  path      = settings?[ 'path'     ] ? null
   autosave  = settings?[ 'autosave' ] ? null
   ### ??? `ref` will hold reference point of globs ??? ###
   ref       = settings?[ 'ref'      ] ? null
-  path      =                           null
   #.........................................................................................................
   switch type_of_globs = CND.type_of globs
     when 'null' then null
@@ -57,16 +66,13 @@ do_glob                   = require 'glob'
     when 'text' then globs = [ globs, ]
     else throw new Error "expected a text or a list for globs, got a #{type_of_globs}"
   #.........................................................................................................
-  switch type_of_cache = CND.type_of cache
-    when 'FORGETMENOT/cache' then throw new Error "### MEH ### not implemented"
+  switch type_of_path = CND.type_of path
     when 'null' then null
-    when 'text'
-      path  = cache
-      R     = @_new_cache_from_path path, settings
-    else throw new Error "expected a text or an object of type 'FORGETMENOT/cache', got a #{type_of_cache}"
+    when 'text' then R = @_new_memo_from_path path, settings
+    else throw new Error "expected a text or an object of type 'FORGETMENOT/memo', got a #{type_of_path}"
   #.........................................................................................................
   R ?=
-    '~isa':         'FORGETMENOT/cache'
+    '~isa':         'FORGETMENOT/memo'
     globs:          []
     path:           path
     files:          {}
@@ -82,8 +88,11 @@ do_glob                   = require 'glob'
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@_new_cache_from_path  = ( path, settings ) ->
-  ### Try to load cache object from file; return `null` if not found ###
+@new_memo._keys = [ 'globs', 'path', 'autosave', 'ref', ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_new_memo_from_path  = ( path, settings ) ->
+  ### Try to load memo object from file; return `null` if not found ###
   try
     json = FS.readFileSync path, { encoding: 'utf-8', }
   catch error
