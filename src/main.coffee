@@ -31,6 +31,8 @@ do_glob                   = require 'glob'
 #
 #-----------------------------------------------------------------------------------------------------------
 @new_memo = ( settings, handler ) ->
+  #.........................................................................................................
+  ### Check for arity 1 or 2 ###
   switch arity = arguments.length
     when 1
       if CND.isa_function settings
@@ -42,13 +44,12 @@ do_glob                   = require 'glob'
     else throw new Error "expected 1 or 2 arguments, got #{arity}"
   #.........................................................................................................
   if settings?
-    if CND.isa settings, 'FORGETMENOT/memo'
-      R = CND.deep_copy settings
-      return @update R, handler if handler?
-      return R
+    ### return copy of memo when memo was passed in; otherwise, check that `settings` is a POD ###
+    return @_new_memo_from_memo settings, handler if CND.isa settings, 'FORGETMENOT/memo'
     unless CND.isa_pod settings
       throw new Error "expected a POD or a FORGETMENOT/memo object, got a #{CND.type_of settings}"
   #.........................................................................................................
+  ### make sure no unknown keys have been passed in ###
   unless CND.is_subset ( keys = Object.keys settings ), @new_memo._keys
     expected  = ( rpr key for key in @new_memo._keys                                  ).join ', '
     got       = ( rpr key for key in keys             when key not in @new_memo._keys ).join ', '
@@ -89,6 +90,12 @@ do_glob                   = require 'glob'
 
 #-----------------------------------------------------------------------------------------------------------
 @new_memo._keys = [ 'globs', 'path', 'autosave', 'ref', ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_new_memo_from_memo = ( memo, handler = null ) ->
+  R = CND.deep_copy memo
+  return @update R, handler if handler?
+  return R
 
 #-----------------------------------------------------------------------------------------------------------
 @_new_memo_from_path  = ( path, settings ) ->

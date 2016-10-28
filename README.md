@@ -1,6 +1,14 @@
 
 
+<!--
 
+## Creating a New Memo Object
+
+* `path` is interpreted relative to current working directory (CWD)
+* ... but `globs` are relative to the memo's location
+
+
+-->
 
 ## ToDo
 

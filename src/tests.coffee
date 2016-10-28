@@ -134,8 +134,16 @@ FMN                       = require '..'
   return null
 
 #-----------------------------------------------------------------------------------------------------------
+@[ "new memo with reference point" ] = ( T, done ) ->
+  settings = { ref: 'cwd', }
+  settings = { ref: 'memo', }
+  done()
+
+#-----------------------------------------------------------------------------------------------------------
 @[ "warn about missing features" ] = ( T, done ) ->
-  warn "implement symbolic reference point for path resolution: CWD or *.json location"
+  warn "reference point for globs: memo location"
+  warn "only allow disk-based memos for now; memory-based (unsaved) memos to come later (if at all)"
+  warn "cache absolute paths; make sure memo is skipped when doing checksums"
   done()
 
 
