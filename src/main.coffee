@@ -30,34 +30,40 @@ do_glob                   = require 'glob'
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@new_memo = ( settings, handler = null ) ->
+@create_memo = ( settings, handler ) ->
   #.........................................................................................................
   ### Check for arity 1 or 2 ###
   switch arity = arguments.length
     when 1
-      if CND.isa_function settings
-        handler   = settings
-        settings  = null
+      handler   = settings
+      settings  = null
     when 2 then null
     else throw new Error "expected 1 or 2 arguments, got #{arity}"
   #.........................................................................................................
+  ### check that we did receive a function for argument handler ###
+  unless ( type_of_handler = CND.type_of handler ) is 'function'
+    throw new Error "expected a function for handler, got a #{type_of_handler}"
+  #.........................................................................................................
+  ### return copy of memo when memo was passed in; otherwise, check that `settings` is a POD ###
   if settings?
-    ### return copy of memo when memo was passed in; otherwise, check that `settings` is a POD ###
-    return @_new_memo_from_memo settings, handler if CND.isa settings, 'FORGETMENOT/memo'
     unless CND.isa_pod settings
-      throw new Error "expected a POD or a FORGETMENOT/memo object, got a #{CND.type_of settings}"
+      throw new Error "expected a POD, got a #{CND.type_of settings}"
   #.........................................................................................................
   ### make sure no unknown keys have been passed in ###
-  unless CND.is_subset ( keys = Object.keys settings ), @new_memo._keys
-    expected  = ( rpr key for key in @new_memo._keys                                  ).join ', '
-    got       = ( rpr key for key in keys             when key not in @new_memo._keys ).join ', '
+  unless CND.is_subset ( keys = Object.keys settings ), @create_memo._keys
+    expected  = ( rpr key for key in @create_memo._keys                                  ).join ', '
+    got       = ( rpr key for key in keys             when key not in @create_memo._keys ).join ', '
     throw new Error "expected #{expected} as keys of settings, got #{got}"
   #.........................................................................................................
+  Z         = null
+  autosave  = settings?[ 'name' ]? and settings?[ 'ref' ]?
+  name      = settings?[ 'name'     ] ? '.forgetmenot-memo.json'
   globs     = settings?[ 'globs'    ] ? []
-  path      = settings?[ 'path'     ] ? null
-  autosave  = settings?[ 'autosave' ] ? null
-  ### ??? `ref` will hold reference point of globs ??? ###
-  ref       = settings?[ 'ref'      ] ? null
+  ref       = settings?[ 'ref'      ] ? '.'
+  #.........................................................................................................
+  switch type_of_name = CND.type_of name
+    when 'text' then null
+    else throw new Error "expected a text for name, got a #{type_of_name}"
   #.........................................................................................................
   switch type_of_globs = CND.type_of globs
     when 'null' then null
@@ -65,35 +71,35 @@ do_glob                   = require 'glob'
     when 'text' then globs = [ globs, ]
     else throw new Error "expected a text or a list for globs, got a #{type_of_globs}"
   #.........................................................................................................
-  switch type_of_path = CND.type_of path
-    when 'null' then null
-    when 'text' then R = @_new_memo_from_path path, settings
+  switch type_of_ref = CND.type_of ref
+    when 'text'
+      if autosave
+        memo_path = PATH.resolve ref, name
+        debug '22901', memo_path
+        Z = @_new_memo_from_path memo_path, settings
     else throw new Error "expected a text or an object of type 'FORGETMENOT/memo', got a #{type_of_path}"
   #.........................................................................................................
-  R ?=
+  Z ?=
     '~isa':         'FORGETMENOT/memo'
-    globs:          []
-    path:           path
+    globs:          globs[ .. ]
+    ref:            ref
+    autosave:       autosave
     files:          {}
-    autosave:       no
     cache:          {}
   #.........................................................................................................
-  for glob in globs
-    continue if glob in R[ 'globs' ]
-    R[ 'globs' ].push glob
-  R[ 'autosave' ] = if autosave? then autosave else path?
+  step ( resume ) =>
+    debug '99981', yield @is_folder Z, ref, resume
+    #.......................................................................................................
+    try
+      yield @update Z, resume
+    catch error
+      return handler error
+    handler null, Z if handler?
   #.........................................................................................................
-  return @update R, handler if handler?
-  return R
+  return null
 
 #-----------------------------------------------------------------------------------------------------------
-@new_memo._keys = [ 'globs', 'path', 'autosave', 'ref', ]
-
-#-----------------------------------------------------------------------------------------------------------
-@_new_memo_from_memo = ( memo, handler = null ) ->
-  R = CND.deep_copy memo
-  return @update R, handler if handler?
-  return R
+@create_memo._keys = [ 'globs', 'ref', 'name', ]
 
 #-----------------------------------------------------------------------------------------------------------
 @_new_memo_from_path  = ( path, settings ) ->
@@ -101,7 +107,7 @@ do_glob                   = require 'glob'
   try
     json = FS.readFileSync path, { encoding: 'utf-8', }
   catch error
-    return null if ( error[ 'code' ] is 'ENOENT' ) or json.length is 0
+    return null if error[ 'code' ] is 'ENOENT'
     throw error
   ### TAINT perform sanity check on object structure ###
   return null if json.length is 0
@@ -113,7 +119,7 @@ do_glob                   = require 'glob'
 #-----------------------------------------------------------------------------------------------------------
 @update = ( me, handler ) ->
   ### TAINT update timestamp only where checksum is new ###
-  { files, autosave, } = me
+  { files, } = me
   step ( resume ) =>
     for glob in me[ 'globs' ]
       paths = yield do_glob glob, resume
@@ -143,7 +149,7 @@ do_glob                   = require 'glob'
         #...................................................................................................
         target = files[ path_checksum ] ?= {}
         Object.assign target, { path, checksum, timestamp, status, }
-    return if autosave then ( @save me, handler ) else handler null, me
+    return if me[ 'autosave' ] then ( @save me, handler ) else ( handler null, me )
   return null
 
 #-----------------------------------------------------------------------------------------------------------
@@ -226,11 +232,21 @@ do_glob                   = require 'glob'
 @timestamp_from_path = ( me, path, handler ) ->
   step ( resume ) =>
     try
-      stat  = yield ( require 'fs' ).stat path, resume
+      stat  = yield FS.stat path, resume
     catch error
       throw error unless error[ 'code' ] is 'ENOENT'
       return handler null, null
     handler null, @DATE.as_timestamp stat[ 'mtime' ]
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@is_folder = ( me, path, handler ) ->
+  FS.stat path, ( error, stat ) =>
+    if error?
+      debug '33091', error
+      debug '33091', error[ 'code' ]
+    return handler error if error?
+    handler null, stat.isDirectory()
   return null
 
 

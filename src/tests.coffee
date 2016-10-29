@@ -68,7 +68,7 @@ FMN                       = require '..'
 @_main = ->
   # debug @_get_source PATH.resolve test_data_home, 'f.coffee'
   # debug @_require_file PATH.resolve test_data_home, 'file::f.js'
-  test @, 'timeout': 5000
+  test @, 'timeout': 2500
 
 # #-----------------------------------------------------------------------------------------------------------
 # f = ->
@@ -79,23 +79,24 @@ FMN                       = require '..'
 # TESTS
 #-----------------------------------------------------------------------------------------------------------
 @[ "create memo object (1)" ] = ( T, done ) ->
-  probes_and_matchers = [
-    [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
-    [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
-    [{"autosave":true,"path":"test-data/memo-1.json"},{"~isa":"FORGETMENOT/memo","globs":[],"path":"test-data/memo-1.json","files":{},"autosave":true,"cache":{}}]
-    [{"globs":"src/*"},{"~isa":"FORGETMENOT/memo","globs":["src/*"],"path":null,"files":{},"autosave":false,"cache":{}}]
-    ]
-  for [ probe, matcher, ] in probes_and_matchers
-    result = FMN.new_memo probe
-    # debug '22022', JSON.stringify [ probe, result, ]
-    T.eq result, matcher
-  done()
+  step ( resume ) =>
+    probes_and_matchers = [
+      [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"cache":{}}]
+      [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"cache":{}}]
+      [{"ref":"test-data"},{"~isa":"FORGETMENOT/memo","globs":[],"path":"test-data/memo-1.json","files":{},"cache":{}}]
+      [{"globs":"src/*"},{"~isa":"FORGETMENOT/memo","globs":["src/*"],"path":null,"files":{},"cache":{}}]
+      ]
+    for [ probe, matcher, ] in probes_and_matchers
+      result = yield FMN.create_memo probe, resume
+      debug '22022', JSON.stringify [ probe, result, ]
+      T.eq result, matcher
+    done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "create memo object (2)" ] = ( T, done ) ->
   step ( resume ) =>
     settings    = { globs: 'src/*', }
-    result      = yield FMN.new_memo settings, resume
+    result      = yield FMN.create_memo settings, resume
     { files, }  = result
     T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
     T.eq files[ '0e4cf94eac84' ][ 'path' ], 'src/tests.coffee'
@@ -109,8 +110,8 @@ FMN                       = require '..'
 #-----------------------------------------------------------------------------------------------------------
 @[ "create memo object with path" ] = ( T, done ) ->
   step ( resume ) =>
-    settings    = { globs: 'src/*', path: 'test-data/example-1.json' }
-    result      = yield FMN.new_memo settings, resume
+    settings    = { globs: 'src/*', ref: 'test-data/example-1.json' }
+    result      = yield FMN.create_memo settings, resume
     debug '90988', result
     { files, }  = result
     T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
@@ -125,8 +126,8 @@ FMN                       = require '..'
 #-----------------------------------------------------------------------------------------------------------
 @[ "set and get to and from cache" ] = ( T, done ) ->
   step ( resume ) =>
-    settings    = { globs: 'src/*', path: 'test-data/example-1.json' }
-    fmn         = yield FMN.new_memo settings, resume
+    settings    = { ref: 'test-data', name: 'cache-example.json' }
+    fmn         = yield FMN.create_memo settings, resume
     FMN.set fmn, 'bar', 42
     debug '90988', fmn
     debug '22230', FMN.get fmn, 'bar'
@@ -143,6 +144,9 @@ FMN                       = require '..'
 @[ "warn about missing features" ] = ( T, done ) ->
   warn "reference point for globs: memo location"
   warn "cache absolute paths; make sure memo is skipped when doing checksums"
+  # `path` is reference point
+  # `path` must be path to directory
+  # `path` defaults to CWD
   done()
 
 
@@ -150,15 +154,15 @@ FMN                       = require '..'
 unless module.parent?
   include = [
     "create memo object (1)"
-    "create memo object (2)"
-    "create memo object with path"
-    "set and get to and from cache"
-    "warn about missing features"
+    # "create memo object (2)"
+    # "create memo object with path"
+    # "set and get to and from cache"
+    # "warn about missing features"
     ]
   @_prune()
   @_main()
 
-  # CND.run => @[ "create cache object with path" ] { eq: ( -> ), ok: ( -> ), }, ->
+  # CND.run => @[ "create memo object (1)" ] { eq: ( -> ), ok: ( -> ), }, ->
 
 
 
