@@ -13,14 +13,14 @@
   },
   "c19a9d5b001f": {
    "path": "src/main.coffee",
-   "checksum": "a4d09949923a",
-   "timestamp": "20161028-210858.596",
+   "checksum": "aacdea95d1b7",
+   "timestamp": "20161029-092802.643",
    "status": "same"
   },
   "0e4cf94eac84": {
    "path": "src/tests.coffee",
-   "checksum": "827ca5a061b4",
-   "timestamp": "20161028-211002.876",
+   "checksum": "912a32d81373",
+   "timestamp": "20161029-092854.851",
    "status": "same"
   }
  },

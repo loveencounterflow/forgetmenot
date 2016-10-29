@@ -30,7 +30,7 @@ do_glob                   = require 'glob'
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@new_memo = ( settings, handler ) ->
+@new_memo = ( settings, handler = null ) ->
   #.........................................................................................................
   ### Check for arity 1 or 2 ###
   switch arity = arguments.length
@@ -38,8 +38,6 @@ do_glob                   = require 'glob'
       if CND.isa_function settings
         handler   = settings
         settings  = null
-      else
-        handler   = null
     when 2 then null
     else throw new Error "expected 1 or 2 arguments, got #{arity}"
   #.........................................................................................................
@@ -126,8 +124,6 @@ do_glob                   = require 'glob'
         old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
         old_timestamp           = files[ path_checksum ]?[ 'timestamp'  ] ? null
         #...................................................................................................
-        help '33209', old_checksum, new_checksum
-        help '33209', old_timestamp, new_timestamp
         if old_checksum is new_checksum
           status    = 'same'
           checksum  = old_checksum

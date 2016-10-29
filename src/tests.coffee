@@ -142,7 +142,6 @@ FMN                       = require '..'
 #-----------------------------------------------------------------------------------------------------------
 @[ "warn about missing features" ] = ( T, done ) ->
   warn "reference point for globs: memo location"
-  warn "only allow disk-based memos for now; memory-based (unsaved) memos to come later (if at all)"
   warn "cache absolute paths; make sure memo is skipped when doing checksums"
   done()
 
