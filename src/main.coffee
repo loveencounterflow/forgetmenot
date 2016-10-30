@@ -142,8 +142,11 @@ do_glob                   = require 'glob'
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@update = ( me, handler ) ->
-  ### TAINT update timestamp only where checksum is new ###
+@update       = ( me, handler ) -> @_update me, false,  handler
+@force_update = ( me, handler ) -> @_update me, yes,    handler
+
+#-----------------------------------------------------------------------------------------------------------
+@_update = ( me, force, handler ) ->
   { files, }  = me
   ref         = @_get_ref me
   #.........................................................................................................
@@ -158,7 +161,7 @@ do_glob                   = require 'glob'
         old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
         old_timestamp           = files[ path_checksum ]?[ 'timestamp'  ] ? null
         #...................................................................................................
-        if old_checksum is new_checksum
+        if ( not force ) and old_checksum is new_checksum
           status    = 'same'
           checksum  = old_checksum
           timestamp = if old_timestamp < new_timestamp then old_timestamp else new_timestamp
@@ -169,7 +172,7 @@ do_glob                   = require 'glob'
           checksum  = new_checksum
           timestamp = new_timestamp
         #...................................................................................................
-        target                      = files[ path_checksum ] ?= @_new_entry me
+        target = files[ path_checksum ] ?= @_new_entry me
         # target[ 'last-timestamp' ]  = target[ 'timestamp' ]
         Object.assign target, { path: relative_path, checksum, timestamp, status, }
     return if me[ 'autosave' ] then ( @save me, handler ) else ( handler null, me )
@@ -222,6 +225,13 @@ do_glob                   = require 'glob'
     return fallback unless fallback is undefined
     throw new Error "no cache entry named #{rpr name}"
   return JSON.parse R[ 'value' ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_file_entry_from_path = ( me, path ) ->
+  ### TAINT make this a global emthod; unify interface with get / get_entry / set ###
+  path_checksum = @checksum_from_text me, path
+  throw new Error "no file registered with path #{rpr path}" unless ( R = me[ 'files' ][ path_checksum ] )?
+  return R
 
 
 #===========================================================================================================
