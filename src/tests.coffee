@@ -143,6 +143,19 @@ FMN                       = require '..'
   return null
 
 #-----------------------------------------------------------------------------------------------------------
+@[ "memo itself gets checksummed" ] = ( T, done ) ->
+  ### when the memo file is included by one of the globs, the entry for the memo will keep updating, but
+  no bad things happen. ###
+  step ( resume ) =>
+    settings    = { ref: 'test-data/test-2', name: 'no checksum for this memo.json', globs: './*', }
+    result      = yield FMN.create_memo settings, resume
+    debug '22022', result
+    #.......................................................................................................
+    done()
+  #.........................................................................................................
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
 @[ "warn about missing features" ] = ( T, done ) ->
   warn "reference point for globs: memo location"
   warn "cache absolute paths; make sure memo is skipped when doing checksums"
@@ -158,6 +171,7 @@ unless module.parent?
     "create memo object (1)"
     "create memo object (2)"
     "set and get to and from cache"
+    "memo itself gets checksummed"
     "warn about missing features"
     ]
   @_prune()

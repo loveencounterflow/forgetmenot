@@ -170,7 +170,7 @@ do_glob                   = require 'glob'
           timestamp = new_timestamp
         #...................................................................................................
         target                      = files[ path_checksum ] ?= @_new_entry me
-        target[ 'last-timestamp' ]  = target[ 'timestamp' ]
+        # target[ 'last-timestamp' ]  = target[ 'timestamp' ]
         Object.assign target, { path: relative_path, checksum, timestamp, status, }
     return if me[ 'autosave' ] then ( @save me, handler ) else ( handler null, me )
   return null
