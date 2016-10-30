@@ -1,6 +1,6 @@
 {
   "name": "forgetmenot",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "content-addressed file date (mtime) caching",
   "main": "lib/main.js",
   "scripts": {
