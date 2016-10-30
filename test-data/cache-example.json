@@ -1,8 +1,9 @@
 {
  "~isa": "FORGETMENOT/memo",
  "globs": [],
- "path": "test-data/memo-1.json",
- "files": {},
+ "ref": "test-data",
+ "name": "cache-example.json",
  "autosave": true,
+ "files": {},
  "cache": {}
 }

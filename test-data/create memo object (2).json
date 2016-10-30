@@ -1,0 +1,36 @@
+{
+ "~isa": "FORGETMENOT/memo",
+ "globs": [
+  "test-1/*.txt"
+ ],
+ "ref": "test-data",
+ "name": "create memo object (2).json",
+ "autosave": true,
+ "files": {
+  "84d84b2199bf": {
+   "path": "test-1/bar.txt",
+   "checksum": "6690442d583d",
+   "timestamp": "20161030-133647.340",
+   "status": "same",
+   "value": null,
+   "last-timestamp": "20161030-133647.340"
+  },
+  "425b46fcc178": {
+   "path": "test-1/baz.txt",
+   "checksum": "5e066f2c5453",
+   "timestamp": "20161030-133653.908",
+   "status": "same",
+   "value": null,
+   "last-timestamp": "20161030-133653.908"
+  },
+  "7a803a2b46f6": {
+   "path": "test-1/foo.txt",
+   "checksum": "d6375ba60848",
+   "timestamp": "20161030-133639.464",
+   "status": "same",
+   "value": null,
+   "last-timestamp": "20161030-133639.464"
+  }
+ },
+ "cache": {}
+}

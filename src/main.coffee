@@ -25,6 +25,13 @@ D                         = require 'pipedreams'
 { step, }                 = require 'coffeenode-suspend'
 do_glob                   = require 'glob'
 @DATE                     = require './date'
+#...........................................................................................................
+σ_ref                     = Symbol.for 'ref'
+σ_memopath                = Symbol.for 'path'
+σ_globs                   = Symbol.for 'globs'
+# σ_ref                     = '%ref'
+# σ_memopath                = '%path'
+# σ_globs                   = '%globs'
 
 
 #===========================================================================================================
@@ -75,7 +82,6 @@ do_glob                   = require 'glob'
     when 'text'
       if autosave
         memo_path = PATH.resolve ref, name
-        debug '22901', memo_path
         Z = @_new_memo_from_path memo_path, settings
     else throw new Error "expected a text or an object of type 'FORGETMENOT/memo', got a #{type_of_path}"
   #.........................................................................................................
@@ -83,12 +89,15 @@ do_glob                   = require 'glob'
     '~isa':         'FORGETMENOT/memo'
     globs:          globs[ .. ]
     ref:            ref
+    name:           name
     autosave:       autosave
     files:          {}
     cache:          {}
   #.........................................................................................................
   step ( resume ) =>
-    debug '99981', yield @is_folder Z, ref, resume
+    absolute_ref = @_get_ref Z
+    unless yield @is_folder Z, absolute_ref, resume
+      return handler new Error "expected reference path to be a folder: #{absolute_ref}"
     #.......................................................................................................
     try
       yield @update Z, resume
@@ -113,18 +122,37 @@ do_glob                   = require 'glob'
   return null if json.length is 0
   return JSON.parse json
 
+#-----------------------------------------------------------------------------------------------------------
+@_resolve_paths = ( me ) ->
+  return if me[ σ_ref ]?
+  me[ σ_ref      ] = PATH.resolve process.cwd(), me[ 'ref' ]
+  me[ σ_memopath ] = PATH.resolve me[ σ_ref ], me[ 'name' ]
+  me[ σ_globs    ] = ( PATH.resolve me[ σ_ref ], glob for glob in me[ 'globs' ] )
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@_get_ref       = ( me ) -> @_resolve_paths me; return me[ σ_ref      ]
+@_get_memopath  = ( me ) -> @_resolve_paths me; return me[ σ_memopath ]
+@_get_globs     = ( me ) -> @_resolve_paths me; return me[ σ_globs    ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_new_entry = ( me ) -> { path: null, checksum: null, timestamp: null, status: null, value: null, }
+
 
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
 @update = ( me, handler ) ->
   ### TAINT update timestamp only where checksum is new ###
-  { files, } = me
+  { files, }  = me
+  ref         = @_get_ref me
+  #.........................................................................................................
   step ( resume ) =>
-    for glob in me[ 'globs' ]
+    for glob in @_get_globs me
       paths = yield do_glob glob, resume
       for path in paths
-        path_checksum           = @checksum_from_text         me, path, null
+        relative_path           = PATH.relative ref, path
+        path_checksum           = @checksum_from_text         me, relative_path
         new_checksum            = yield @checksum_from_path   me, path, resume
         new_timestamp           = yield @timestamp_from_path  me, path, resume
         old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
@@ -141,24 +169,19 @@ do_glob                   = require 'glob'
           checksum  = new_checksum
           timestamp = new_timestamp
         #...................................................................................................
-        ###
-        if files[ path_checksum ]?
-          files[ path_checksum ][ 'previous-checksum'  ] = files[ path_checksum ][ 'checksum'  ]
-          files[ path_checksum ][ 'previous-timestamp' ] = files[ path_checksum ][ 'timestamp' ]
-        ###
-        #...................................................................................................
-        target = files[ path_checksum ] ?= {}
-        Object.assign target, { path, checksum, timestamp, status, }
+        target                      = files[ path_checksum ] ?= @_new_entry me
+        target[ 'last-timestamp' ]  = target[ 'timestamp' ]
+        Object.assign target, { path: relative_path, checksum, timestamp, status, }
     return if me[ 'autosave' ] then ( @save me, handler ) else ( handler null, me )
   return null
 
 #-----------------------------------------------------------------------------------------------------------
 @save = ( me, handler = null ) ->
-  json = JSON.stringify me, null, ' '
+  json  = JSON.stringify me, null, ' '
+  path  = @_get_memopath me
   #.........................................................................................................
   if handler?
     step ( resume ) =>
-      return handler new Error "unable to save without path given" unless ( path = me[ 'path' ] )?
       yield FS.writeFile path, json, resume
       handler null, me
   #.........................................................................................................
@@ -171,26 +194,34 @@ do_glob                   = require 'glob'
 #===========================================================================================================
 # SET AND GET OF CACHE ENTRIES
 #-----------------------------------------------------------------------------------------------------------
-@set = ( me, key, value ) ->
+@set = ( me, name, value ) ->
   ### serialize, checksum, equality ###
-  timestamp = @DATE.as_timestamp()
-  target    = me[ 'cache' ][ 'key' ] ?= {}
-  Object.assign target, { value, timestamp, }
+  { cache, }  = me
+  timestamp   = @DATE.as_timestamp()
+  key         = @checksum_from_text me, name
+  json        = JSON.stringify value
+  return if json is cache[ key ]?[ 'value' ]
+  ### TAINT no need for checksum when doing string comparison ###
+  # checksum    = @checksum_from_text me, json
+  checksum    = null
+  entry       = cache[ key ] ?= @_new_entry me
+  Object.assign entry, { path: name, value: json, checksum, timestamp, }
   return me
 
 #-----------------------------------------------------------------------------------------------------------
-@get_entry = ( me, key, fallback ) ->
-  unless ( R = me[ 'cache' ][ 'key' ] )?
+@get_entry = ( me, name, fallback ) ->
+  key = @checksum_from_text me, name
+  unless ( R = me[ 'cache' ][ key ] )?
     return fallback unless fallback is undefined
-    throw new Error "no such key: #{rpr key}"
+    throw new Error "no cache entry named #{rpr name}"
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@get = ( me, key, fallback ) ->
-  if ( R = @get_entry me, key, null ) is null
+@get = ( me, name, fallback ) ->
+  if ( R = @get_entry me, name, null ) is null
     return fallback unless fallback is undefined
-    throw new Error "no such key: #{rpr key}"
-  return R[ 'value' ]
+    throw new Error "no cache entry named #{rpr name}"
+  return JSON.parse R[ 'value' ]
 
 
 #===========================================================================================================
@@ -243,9 +274,8 @@ do_glob                   = require 'glob'
 @is_folder = ( me, path, handler ) ->
   FS.stat path, ( error, stat ) =>
     if error?
-      debug '33091', error
-      debug '33091', error[ 'code' ]
-    return handler error if error?
+      return handler null, false if error[ 'code' ] is 'ENOENT'
+      return handler error
     handler null, stat.isDirectory()
   return null
 
