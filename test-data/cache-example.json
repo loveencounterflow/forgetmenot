@@ -1,0 +1,9 @@
+{
+ "~isa": "FORGETMENOT/memo",
+ "globs": [],
+ "ref": "test-data",
+ "name": "cache-example.json",
+ "autosave": true,
+ "files": {},
+ "cache": {}
+}

@@ -25,39 +25,52 @@ D                         = require 'pipedreams'
 { step, }                 = require 'coffeenode-suspend'
 do_glob                   = require 'glob'
 @DATE                     = require './date'
+#...........................................................................................................
+σ_ref                     = Symbol.for 'ref'
+σ_memopath                = Symbol.for 'path'
+σ_globs                   = Symbol.for 'globs'
+# σ_ref                     = '%ref'
+# σ_memopath                = '%path'
+# σ_globs                   = '%globs'
 
 
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@new_memo = ( settings, handler = null ) ->
+@create_memo = ( settings, handler ) ->
   #.........................................................................................................
   ### Check for arity 1 or 2 ###
   switch arity = arguments.length
     when 1
-      if CND.isa_function settings
-        handler   = settings
-        settings  = null
+      handler   = settings
+      settings  = null
     when 2 then null
     else throw new Error "expected 1 or 2 arguments, got #{arity}"
   #.........................................................................................................
+  ### check that we did receive a function for argument handler ###
+  unless ( type_of_handler = CND.type_of handler ) is 'function'
+    throw new Error "expected a function for handler, got a #{type_of_handler}"
+  #.........................................................................................................
+  ### return copy of memo when memo was passed in; otherwise, check that `settings` is a POD ###
   if settings?
-    ### return copy of memo when memo was passed in; otherwise, check that `settings` is a POD ###
-    return @_new_memo_from_memo settings, handler if CND.isa settings, 'FORGETMENOT/memo'
     unless CND.isa_pod settings
-      throw new Error "expected a POD or a FORGETMENOT/memo object, got a #{CND.type_of settings}"
+      throw new Error "expected a POD, got a #{CND.type_of settings}"
   #.........................................................................................................
   ### make sure no unknown keys have been passed in ###
-  unless CND.is_subset ( keys = Object.keys settings ), @new_memo._keys
-    expected  = ( rpr key for key in @new_memo._keys                                  ).join ', '
-    got       = ( rpr key for key in keys             when key not in @new_memo._keys ).join ', '
+  unless CND.is_subset ( keys = Object.keys settings ), @create_memo._keys
+    expected  = ( rpr key for key in @create_memo._keys                                  ).join ', '
+    got       = ( rpr key for key in keys             when key not in @create_memo._keys ).join ', '
     throw new Error "expected #{expected} as keys of settings, got #{got}"
   #.........................................................................................................
+  Z         = null
+  autosave  = settings?[ 'name' ]? and settings?[ 'ref' ]?
+  name      = settings?[ 'name'     ] ? '.forgetmenot-memo.json'
   globs     = settings?[ 'globs'    ] ? []
-  path      = settings?[ 'path'     ] ? null
-  autosave  = settings?[ 'autosave' ] ? null
-  ### ??? `ref` will hold reference point of globs ??? ###
-  ref       = settings?[ 'ref'      ] ? null
+  ref       = settings?[ 'ref'      ] ? '.'
+  #.........................................................................................................
+  switch type_of_name = CND.type_of name
+    when 'text' then null
+    else throw new Error "expected a text for name, got a #{type_of_name}"
   #.........................................................................................................
   switch type_of_globs = CND.type_of globs
     when 'null' then null
@@ -65,35 +78,37 @@ do_glob                   = require 'glob'
     when 'text' then globs = [ globs, ]
     else throw new Error "expected a text or a list for globs, got a #{type_of_globs}"
   #.........................................................................................................
-  switch type_of_path = CND.type_of path
-    when 'null' then null
-    when 'text' then R = @_new_memo_from_path path, settings
+  switch type_of_ref = CND.type_of ref
+    when 'text'
+      if autosave
+        memo_path = PATH.resolve ref, name
+        Z = @_new_memo_from_path memo_path, settings
     else throw new Error "expected a text or an object of type 'FORGETMENOT/memo', got a #{type_of_path}"
   #.........................................................................................................
-  R ?=
+  Z ?=
     '~isa':         'FORGETMENOT/memo'
-    globs:          []
-    path:           path
+    globs:          globs[ .. ]
+    ref:            ref
+    name:           name
+    autosave:       autosave
     files:          {}
-    autosave:       no
     cache:          {}
   #.........................................................................................................
-  for glob in globs
-    continue if glob in R[ 'globs' ]
-    R[ 'globs' ].push glob
-  R[ 'autosave' ] = if autosave? then autosave else path?
+  step ( resume ) =>
+    absolute_ref = @_get_ref Z
+    unless yield @is_folder Z, absolute_ref, resume
+      return handler new Error "expected reference path to be a folder: #{absolute_ref}"
+    #.......................................................................................................
+    try
+      yield @update Z, resume
+    catch error
+      return handler error
+    handler null, Z if handler?
   #.........................................................................................................
-  return @update R, handler if handler?
-  return R
+  return null
 
 #-----------------------------------------------------------------------------------------------------------
-@new_memo._keys = [ 'globs', 'path', 'autosave', 'ref', ]
-
-#-----------------------------------------------------------------------------------------------------------
-@_new_memo_from_memo = ( memo, handler = null ) ->
-  R = CND.deep_copy memo
-  return @update R, handler if handler?
-  return R
+@create_memo._keys = [ 'globs', 'ref', 'name', ]
 
 #-----------------------------------------------------------------------------------------------------------
 @_new_memo_from_path  = ( path, settings ) ->
@@ -101,11 +116,27 @@ do_glob                   = require 'glob'
   try
     json = FS.readFileSync path, { encoding: 'utf-8', }
   catch error
-    return null if ( error[ 'code' ] is 'ENOENT' ) or json.length is 0
+    return null if error[ 'code' ] is 'ENOENT'
     throw error
   ### TAINT perform sanity check on object structure ###
   return null if json.length is 0
   return JSON.parse json
+
+#-----------------------------------------------------------------------------------------------------------
+@_resolve_paths = ( me ) ->
+  return if me[ σ_ref ]?
+  me[ σ_ref      ] = PATH.resolve process.cwd(), me[ 'ref' ]
+  me[ σ_memopath ] = PATH.resolve me[ σ_ref ], me[ 'name' ]
+  me[ σ_globs    ] = ( PATH.resolve me[ σ_ref ], glob for glob in me[ 'globs' ] )
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@_get_ref       = ( me ) -> @_resolve_paths me; return me[ σ_ref      ]
+@_get_memopath  = ( me ) -> @_resolve_paths me; return me[ σ_memopath ]
+@_get_globs     = ( me ) -> @_resolve_paths me; return me[ σ_globs    ]
+
+#-----------------------------------------------------------------------------------------------------------
+@_new_entry = ( me ) -> { path: null, checksum: null, timestamp: null, status: null, value: null, }
 
 
 #===========================================================================================================
@@ -113,12 +144,15 @@ do_glob                   = require 'glob'
 #-----------------------------------------------------------------------------------------------------------
 @update = ( me, handler ) ->
   ### TAINT update timestamp only where checksum is new ###
-  { files, autosave, } = me
+  { files, }  = me
+  ref         = @_get_ref me
+  #.........................................................................................................
   step ( resume ) =>
-    for glob in me[ 'globs' ]
+    for glob in @_get_globs me
       paths = yield do_glob glob, resume
       for path in paths
-        path_checksum           = @checksum_from_text         me, path, null
+        relative_path           = PATH.relative ref, path
+        path_checksum           = @checksum_from_text         me, relative_path
         new_checksum            = yield @checksum_from_path   me, path, resume
         new_timestamp           = yield @timestamp_from_path  me, path, resume
         old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
@@ -135,24 +169,19 @@ do_glob                   = require 'glob'
           checksum  = new_checksum
           timestamp = new_timestamp
         #...................................................................................................
-        ###
-        if files[ path_checksum ]?
-          files[ path_checksum ][ 'previous-checksum'  ] = files[ path_checksum ][ 'checksum'  ]
-          files[ path_checksum ][ 'previous-timestamp' ] = files[ path_checksum ][ 'timestamp' ]
-        ###
-        #...................................................................................................
-        target = files[ path_checksum ] ?= {}
-        Object.assign target, { path, checksum, timestamp, status, }
-    return if autosave then ( @save me, handler ) else handler null, me
+        target                      = files[ path_checksum ] ?= @_new_entry me
+        # target[ 'last-timestamp' ]  = target[ 'timestamp' ]
+        Object.assign target, { path: relative_path, checksum, timestamp, status, }
+    return if me[ 'autosave' ] then ( @save me, handler ) else ( handler null, me )
   return null
 
 #-----------------------------------------------------------------------------------------------------------
 @save = ( me, handler = null ) ->
-  json = JSON.stringify me, null, ' '
+  json  = JSON.stringify me, null, ' '
+  path  = @_get_memopath me
   #.........................................................................................................
   if handler?
     step ( resume ) =>
-      return handler new Error "unable to save without path given" unless ( path = me[ 'path' ] )?
       yield FS.writeFile path, json, resume
       handler null, me
   #.........................................................................................................
@@ -165,26 +194,34 @@ do_glob                   = require 'glob'
 #===========================================================================================================
 # SET AND GET OF CACHE ENTRIES
 #-----------------------------------------------------------------------------------------------------------
-@set = ( me, key, value ) ->
+@set = ( me, name, value ) ->
   ### serialize, checksum, equality ###
-  timestamp = @DATE.as_timestamp()
-  target    = me[ 'cache' ][ 'key' ] ?= {}
-  Object.assign target, { value, timestamp, }
+  { cache, }  = me
+  timestamp   = @DATE.as_timestamp()
+  key         = @checksum_from_text me, name
+  json        = JSON.stringify value
+  return if json is cache[ key ]?[ 'value' ]
+  ### TAINT no need for checksum when doing string comparison ###
+  # checksum    = @checksum_from_text me, json
+  checksum    = null
+  entry       = cache[ key ] ?= @_new_entry me
+  Object.assign entry, { path: name, value: json, checksum, timestamp, }
   return me
 
 #-----------------------------------------------------------------------------------------------------------
-@get_entry = ( me, key, fallback ) ->
-  unless ( R = me[ 'cache' ][ 'key' ] )?
+@get_entry = ( me, name, fallback ) ->
+  key = @checksum_from_text me, name
+  unless ( R = me[ 'cache' ][ key ] )?
     return fallback unless fallback is undefined
-    throw new Error "no such key: #{rpr key}"
+    throw new Error "no cache entry named #{rpr name}"
   return R
 
 #-----------------------------------------------------------------------------------------------------------
-@get = ( me, key, fallback ) ->
-  if ( R = @get_entry me, key, null ) is null
+@get = ( me, name, fallback ) ->
+  if ( R = @get_entry me, name, null ) is null
     return fallback unless fallback is undefined
-    throw new Error "no such key: #{rpr key}"
-  return R[ 'value' ]
+    throw new Error "no cache entry named #{rpr name}"
+  return JSON.parse R[ 'value' ]
 
 
 #===========================================================================================================
@@ -226,11 +263,20 @@ do_glob                   = require 'glob'
 @timestamp_from_path = ( me, path, handler ) ->
   step ( resume ) =>
     try
-      stat  = yield ( require 'fs' ).stat path, resume
+      stat  = yield FS.stat path, resume
     catch error
       throw error unless error[ 'code' ] is 'ENOENT'
       return handler null, null
     handler null, @DATE.as_timestamp stat[ 'mtime' ]
+  return null
+
+#-----------------------------------------------------------------------------------------------------------
+@is_folder = ( me, path, handler ) ->
+  FS.stat path, ( error, stat ) =>
+    if error?
+      return handler null, false if error[ 'code' ] is 'ENOENT'
+      return handler error
+    handler null, stat.isDirectory()
   return null
 
 

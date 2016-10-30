@@ -68,7 +68,7 @@ FMN                       = require '..'
 @_main = ->
   # debug @_get_source PATH.resolve test_data_home, 'f.coffee'
   # debug @_require_file PATH.resolve test_data_home, 'file::f.js'
-  test @, 'timeout': 5000
+  test @, 'timeout': 2500
 
 # #-----------------------------------------------------------------------------------------------------------
 # f = ->
@@ -79,70 +79,89 @@ FMN                       = require '..'
 # TESTS
 #-----------------------------------------------------------------------------------------------------------
 @[ "create memo object (1)" ] = ( T, done ) ->
-  probes_and_matchers = [
-    [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
-    [{},{"~isa":"FORGETMENOT/memo","globs":[],"path":null,"files":{},"autosave":false,"cache":{}}]
-    [{"autosave":true,"path":"test-data/memo-1.json"},{"~isa":"FORGETMENOT/memo","globs":[],"path":"test-data/memo-1.json","files":{},"autosave":true,"cache":{}}]
-    [{"globs":"src/*"},{"~isa":"FORGETMENOT/memo","globs":["src/*"],"path":null,"files":{},"autosave":false,"cache":{}}]
-    ]
-  for [ probe, matcher, ] in probes_and_matchers
-    result = FMN.new_memo probe
-    # debug '22022', JSON.stringify [ probe, result, ]
-    T.eq result, matcher
-  done()
+  step ( resume ) =>
+    probes_and_matchers = [
+      [{},{"~isa":"FORGETMENOT/memo","globs":[],"ref":".","name":".forgetmenot-memo.json","autosave":false,"files":{},"cache":{}}]
+      [{"ref":"test-data"},{"~isa":"FORGETMENOT/memo","globs":[],"ref":"test-data","name":".forgetmenot-memo.json","autosave":false,"files":{},"cache":{}}]
+      [{"name":"some-name.json"},{"~isa":"FORGETMENOT/memo","globs":[],"ref":".","name":"some-name.json","autosave":false,"files":{},"cache":{}}]
+      ]
+    for [ probe, matcher, ] in probes_and_matchers
+      result = yield FMN.create_memo probe, resume
+      # debug '22022', JSON.stringify [ probe, result, ]
+      T.eq result, matcher
+    done()
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "create memo object (2)" ] = ( T, done ) ->
   step ( resume ) =>
-    settings    = { globs: 'src/*', }
-    result      = yield FMN.new_memo settings, resume
+    settings    = { ref: 'test-data', name: 'create memo object (2).json', globs: 'test-1/*.txt', }
+    result      = yield FMN.create_memo settings, resume
+    debug '22022', result
     { files, }  = result
-    T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
-    T.eq files[ '0e4cf94eac84' ][ 'path' ], 'src/tests.coffee'
-    T.ok @_looks_like_digest files[ 'c19a9d5b001f' ][ 'checksum' ]
-    T.ok @_looks_like_digest files[ '0e4cf94eac84' ][ 'checksum' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ 'c19a9d5b001f' ][ 'timestamp' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ '0e4cf94eac84' ][ 'timestamp' ]
+    T.eq result[ 'globs'    ], [ 'test-1/*.txt' ],
+    T.eq result[ 'ref'      ], 'test-data',
+    T.eq result[ 'name'     ], 'create memo object (2).json',
+    T.eq result[ 'autosave' ], true,
+    T.eq result[ 'cache'    ], {}
+    #.......................................................................................................
+    T.eq files[ '84d84b2199bf' ][ 'path' ], 'test-1/bar.txt'
+    T.eq files[ '425b46fcc178' ][ 'path' ], 'test-1/baz.txt'
+    T.eq files[ '7a803a2b46f6' ][ 'path' ], 'test-1/foo.txt'
+    #.......................................................................................................
+    T.eq files[ '84d84b2199bf' ][ 'checksum' ], '6690442d583d'
+    T.eq files[ '425b46fcc178' ][ 'checksum' ], '5e066f2c5453'
+    T.eq files[ '7a803a2b46f6' ][ 'checksum' ], 'd6375ba60848'
+    #.......................................................................................................
+    T.eq files[ '84d84b2199bf' ][ 'status' ], 'same'
+    T.eq files[ '425b46fcc178' ][ 'status' ], 'same'
+    T.eq files[ '7a803a2b46f6' ][ 'status' ], 'same'
+    #.......................................................................................................
+    T.ok FMN.DATE._looks_like_timestamp files[ '84d84b2199bf' ][ 'timestamp' ]
+    T.ok FMN.DATE._looks_like_timestamp files[ '425b46fcc178' ][ 'timestamp' ]
+    T.ok FMN.DATE._looks_like_timestamp files[ '7a803a2b46f6' ][ 'timestamp' ]
+    #.......................................................................................................
     done()
-  return null
-
-#-----------------------------------------------------------------------------------------------------------
-@[ "create memo object with path" ] = ( T, done ) ->
-  step ( resume ) =>
-    settings    = { globs: 'src/*', path: 'test-data/example-1.json' }
-    result      = yield FMN.new_memo settings, resume
-    debug '90988', result
-    { files, }  = result
-    T.eq files[ 'c19a9d5b001f' ][ 'path' ], 'src/main.coffee'
-    T.eq files[ '0e4cf94eac84' ][ 'path' ], 'src/tests.coffee'
-    T.ok @_looks_like_digest files[ 'c19a9d5b001f' ][ 'checksum' ]
-    T.ok @_looks_like_digest files[ '0e4cf94eac84' ][ 'checksum' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ 'c19a9d5b001f' ][ 'timestamp' ]
-    T.ok FMN.DATE._looks_like_timestamp files[ '0e4cf94eac84' ][ 'timestamp' ]
-    done()
+  #.........................................................................................................
   return null
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "set and get to and from cache" ] = ( T, done ) ->
   step ( resume ) =>
-    settings    = { globs: 'src/*', path: 'test-data/example-1.json' }
-    fmn         = yield FMN.new_memo settings, resume
-    FMN.set fmn, 'bar', 42
-    debug '90988', fmn
-    debug '22230', FMN.get fmn, 'bar'
+    settings    = { ref: 'test-data', name: 'cache-example.json' }
+    memo        = yield FMN.create_memo settings, resume
+    FMN.set memo, 'bar', 42
+    key         = FMN.checksum_from_text memo, 'bar'
+    { cache, }  = memo
+    T.eq ( Object.keys cache ), [ key, ]
+    entry       = cache[ key ]
+    T.ok CND.is_subset ( Object.keys entry ), [ 'path', 'checksum', 'timestamp', 'status', 'value', ]
+    T.eq ( Object.keys entry ).length, 5
+    debug '90988', memo
+    debug '90988', entry
+    T.eq ( FMN.get memo, 'bar' ), 42
     done()
   return null
 
 #-----------------------------------------------------------------------------------------------------------
-@[ "new memo with reference point" ] = ( T, done ) ->
-  settings = { ref: 'cwd', }
-  settings = { ref: 'memo', }
-  done()
+@[ "memo itself gets checksummed" ] = ( T, done ) ->
+  ### when the memo file is included by one of the globs, the entry for the memo will keep updating, but
+  no bad things happen. ###
+  step ( resume ) =>
+    settings    = { ref: 'test-data/test-2', name: 'no checksum for this memo.json', globs: './*', }
+    result      = yield FMN.create_memo settings, resume
+    debug '22022', result
+    #.......................................................................................................
+    done()
+  #.........................................................................................................
+  return null
 
 #-----------------------------------------------------------------------------------------------------------
 @[ "warn about missing features" ] = ( T, done ) ->
   warn "reference point for globs: memo location"
   warn "cache absolute paths; make sure memo is skipped when doing checksums"
+  # `path` is reference point
+  # `path` must be path to directory
+  # `path` defaults to CWD
   done()
 
 
@@ -151,16 +170,28 @@ unless module.parent?
   include = [
     "create memo object (1)"
     "create memo object (2)"
-    "create memo object with path"
     "set and get to and from cache"
+    "memo itself gets checksummed"
     "warn about missing features"
     ]
   @_prune()
   @_main()
 
-  # CND.run => @[ "create cache object with path" ] { eq: ( -> ), ok: ( -> ), }, ->
+  # CND.run => @[ "create memo object (1)" ] { eq: ( -> ), ok: ( -> ), }, ->
 
+  # f = ->
+  #   step ( resume ) ->
+  #     settings =
+  #       ref:    'test-data'
+  #       name:   '.foobar.json'
+  #       globs:  '../src/*.coffee'
+  #     memo = yield FMN.create_memo settings, resume
+  #     urge memo
+  # f()
 
+  # d = { y: 108, }
+  # d[ Symbol.for 'x' ] = 42
+  # help CND.truth CND.equals d, { y: 108, }
 
 # debug timestamp = @DATE.as_timestamp new Date 2001, 0, 1, 12, 0, 0, 0
 # debug @DATE.from_timestamp timestamp

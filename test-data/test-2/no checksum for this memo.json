@@ -1,0 +1,26 @@
+{
+ "~isa": "FORGETMENOT/memo",
+ "globs": [
+  "./*"
+ ],
+ "ref": "test-data/test-2",
+ "name": "no checksum for this memo.json",
+ "autosave": true,
+ "files": {
+  "999e92d2ba68": {
+   "path": "some-file.txt",
+   "checksum": "0ce5a4b93e3b",
+   "timestamp": "20161030-150615.422",
+   "status": "same",
+   "value": null
+  },
+  "8416197aaeae": {
+   "path": "no checksum for this memo.json",
+   "checksum": "694cd35ac211",
+   "timestamp": "20161030-151427.332",
+   "status": "changed",
+   "value": null
+  }
+ },
+ "cache": {}
+}
