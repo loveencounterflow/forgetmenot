@@ -6,7 +6,7 @@
  "ref": "test-data/test-2",
  "name": "no checksum for this memo.json",
  "autosave": true,
- "files": {
+ "store": {
   "999e92d2ba68": {
    "path": "some-file.txt",
    "checksum": "0ce5a4b93e3b",
@@ -16,11 +16,10 @@
   },
   "8416197aaeae": {
    "path": "no checksum for this memo.json",
-   "checksum": "80b5a7218274",
-   "timestamp": "20161030-175010.836",
+   "checksum": "de02175b8130",
+   "timestamp": "20161031-180440.025",
    "status": "changed",
    "value": null
   }
- },
- "cache": {}
+ }
 }

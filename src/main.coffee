@@ -91,8 +91,7 @@ do_glob                   = require 'glob'
     ref:            ref
     name:           name
     autosave:       autosave
-    files:          {}
-    cache:          {}
+    store:          {}
   #.........................................................................................................
   step ( resume ) =>
     absolute_ref = @_get_ref Z
@@ -136,18 +135,27 @@ do_glob                   = require 'glob'
 @_get_globs     = ( me ) -> @_resolve_paths me; return me[ σ_globs    ]
 
 #-----------------------------------------------------------------------------------------------------------
-@_new_entry = ( me ) -> { path: null, checksum: null, timestamp: null, status: null, value: null, }
+@_new_entry = ( me, P... ) ->
+  R =
+    protocol:   null
+    path:       null
+    checksum:   null
+    timestamp:  null
+    status:     null
+    value:      null
+  Object.assign R, P... if P.length > 0
+  return R
 
 
 #===========================================================================================================
 #
 #-----------------------------------------------------------------------------------------------------------
-@update       = ( me, handler ) -> @_update me, false,  handler
-@force_update = ( me, handler ) -> @_update me, yes,    handler
+@update       = ( me, handler ) -> @_update me, no,   handler
+@force_update = ( me, handler ) -> @_update me, yes,  handler
 
 #-----------------------------------------------------------------------------------------------------------
 @_update = ( me, force, handler ) ->
-  { files, }  = me
+  { store, }  = me
   ref         = @_get_ref me
   #.........................................................................................................
   step ( resume ) =>
@@ -158,8 +166,8 @@ do_glob                   = require 'glob'
         path_checksum           = @checksum_from_text         me, relative_path
         new_checksum            = yield @checksum_from_path   me, path, resume
         new_timestamp           = yield @timestamp_from_path  me, path, resume
-        old_checksum            = files[ path_checksum ]?[ 'checksum'   ] ? null
-        old_timestamp           = files[ path_checksum ]?[ 'timestamp'  ] ? null
+        old_checksum            = store[ path_checksum ]?[ 'checksum'   ] ? null
+        old_timestamp           = store[ path_checksum ]?[ 'timestamp'  ] ? null
         #...................................................................................................
         if ( not force ) and old_checksum is new_checksum
           status    = 'same'
@@ -172,7 +180,7 @@ do_glob                   = require 'glob'
           checksum  = new_checksum
           timestamp = new_timestamp
         #...................................................................................................
-        target = files[ path_checksum ] ?= @_new_entry me
+        target = store[ path_checksum ] ?= @_new_entry me, protocol: 'file'
         # target[ 'last-timestamp' ]  = target[ 'timestamp' ]
         Object.assign target, { path: relative_path, checksum, timestamp, status, }
     return if me[ 'autosave' ] then ( @save me, handler ) else ( handler null, me )
@@ -199,29 +207,33 @@ do_glob                   = require 'glob'
 #-----------------------------------------------------------------------------------------------------------
 @set = ( me, name, value ) ->
   ### serialize, checksum, equality ###
-  { cache, }  = me
+  { store, }  = me
   timestamp   = @DATE.as_timestamp()
-  key         = @checksum_from_text me, name
+  protocol    = 'cache'
+  locator     = "#{protocol}::#{name}"
+  key         = @checksum_from_text me, locator
   json        = JSON.stringify value
-  return if json is cache[ key ]?[ 'value' ]
+  return if json is store[ key ]?[ 'value' ]
   ### TAINT no need for checksum when doing string comparison ###
   # checksum    = @checksum_from_text me, json
   checksum    = null
-  entry       = cache[ key ] ?= @_new_entry me
+  entry       = store[ key ] ?= @_new_entry me, { protocol, }
   Object.assign entry, { path: name, value: json, checksum, timestamp, }
   return me
 
 #-----------------------------------------------------------------------------------------------------------
-@get_entry = ( me, name, fallback ) ->
-  key = @checksum_from_text me, name
-  unless ( R = me[ 'cache' ][ key ] )?
+@get_cache_entry = ( me, name, fallback ) ->
+  protocol  = 'cache'
+  locator   = "#{protocol}::#{name}"
+  key       = @checksum_from_text me, locator
+  unless ( R = me[ 'store' ][ key ] )?
     return fallback unless fallback is undefined
     throw new Error "no cache entry named #{rpr name}"
   return R
 
 #-----------------------------------------------------------------------------------------------------------
 @get = ( me, name, fallback ) ->
-  if ( R = @get_entry me, name, null ) is null
+  if ( R = @get_cache_entry me, name, null ) is null
     return fallback unless fallback is undefined
     throw new Error "no cache entry named #{rpr name}"
   return JSON.parse R[ 'value' ]
@@ -230,7 +242,7 @@ do_glob                   = require 'glob'
 @_file_entry_from_path = ( me, path ) ->
   ### TAINT make this a global emthod; unify interface with get / get_entry / set ###
   path_checksum = @checksum_from_text me, path
-  throw new Error "no file registered with path #{rpr path}" unless ( R = me[ 'files' ][ path_checksum ] )?
+  throw new Error "no file registered with path #{rpr path}" unless ( R = me[ 'store' ][ path_checksum ] )?
   return R
 
 

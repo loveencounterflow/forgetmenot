@@ -6,7 +6,7 @@
  "ref": "test-data",
  "name": "create memo object (2).json",
  "autosave": true,
- "files": {
+ "store": {
   "84d84b2199bf": {
    "path": "test-1/bar.txt",
    "checksum": "6690442d583d",
@@ -31,6 +31,5 @@
    "value": null,
    "last-timestamp": "20161030-133639.464"
   }
- },
- "cache": {}
+ }
 }

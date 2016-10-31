@@ -4,7 +4,7 @@
   "src/*"
  ],
  "path": "test-data/example-1.json",
- "files": {
+ "store": {
   "e8338b6a05f6": {
    "path": "src/date.coffee",
    "checksum": "0eb5c69f2090",
@@ -24,6 +24,5 @@
    "status": "same"
   }
  },
- "cache": {},
  "autosave": true
 }
