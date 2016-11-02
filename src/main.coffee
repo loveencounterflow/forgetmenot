@@ -245,6 +245,13 @@ do_glob                   = require 'glob'
   throw new Error "no file registered with path #{rpr path}" unless ( R = me[ 'store' ][ path_checksum ] )?
   return R
 
+#-----------------------------------------------------------------------------------------------------------
+@get_entry = ( me, locator ) ->
+  [ protocol, path, ] = locator.split '::'
+  switch protocol
+    when 'file'  then return @_file_entry_from_path  me, path
+    when 'cache' then return @get_cache_entry me, path
+  throw new Error "no stamper for protocol #{rpr protocol}"
 
 #===========================================================================================================
 # CHECKSUMS AND MTIMES
